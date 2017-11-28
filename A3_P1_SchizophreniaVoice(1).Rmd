@@ -1,0 +1,384 @@
+---
+title: "Assignment2_Part1_VoiceInSchizophrenia"
+author: "Riccardo Fusaroli"
+date: "July 17, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment 2 - Part 1 - Assessing voice in schizophrenia
+
+Schizophrenia has been associated with "inappropriate" voice, sometimes monotone, sometimes croaky. A few studies indicate that pitch might be an index of schizophrenia. However, an ongoing meta-analysis of the literature (which you will have a go at in the last assignment) indicates that pitch mean and standard deviation are only weak indicators of diagnosis. Can we do better with our new fancy complex skills?
+
+The corpus you are asked to analyse is a set of voice recordings from people with schizophrenia (just after first diagnosis) and 1-1 matched controls (on gender, age, education). Each participant watched 10 videos of triangles moving across the screen and had to describe them (so you have circa 10 recordings per person). I have already extracted the pitch once every 10 milliseconds and you will have to use this data to assess differences in the voice.
+
+N.B. Question to be answered via email to Celine: can you characterize voice in schizophrenia as acoustically different? Report the methods you used to answer this question and the results from the analyses. Add a couple of lines trying to interpret the results (make sense of the difference). E.g. People with schizophrenia tend to have high-pitched voice, and present bigger swings in their prosody than controls. Add a couple of lines describing limitations of the data/analyses if any is relevant.
+
+N.B. There are looots of files to be dealt with. Probably too many for your computer. This is a challenge for you. Some (complementary) possible strategies: You can select a subset of files only (and you have to justify your choice). You can learn how to use the apply() or map() functions. You can coordinate with classmates.
+
+1. In the course of this assignment you have to first select one datafile and figure out how to:
+
+- Extract "standard" descriptors of pitch: Mean, standard deviation, range
+- Extract less "standard" descriptors of pitch you can think of (e.g. median, iqr, mean absoluted deviation, coefficient of variation)
+- Extract "complex" descriptors: recurrence quantification analysis
+
+
+```{r}
+#setWD
+#setwd("C:/Users/hille/OneDrive/Cognitive Science at Aarhus University/2017 - Experimental Methods 3/assignments/Assignment-3") - it is actually not necessary to setwd when using a project nested in github.
+
+#load demoData
+demoData = read.table("DemoData.txt", header = T)
+
+#load articulation data
+articulationData = read.csv("Articulation.txt")
+
+#load data for one participant
+firstData = read.table("Pitch/Study1D0S101T1_f0.txt", header = T)
+
+#Extract standard descriptors
+library(pastecs)
+
+#Mean, SD, range, median, mean absolute deviation
+#round to get only 4 digits (non-scientific notation)
+round(stat.desc(firstData$f0, norm = T), 4)
+
+mad(firstData$f0)
+
+#iqr, coefficient of variation
+IQR(firstData$f0)
+
+
+#Coefficient of variation
+library(raster)
+raster::cv(firstData$f0)
+
+
+#make the reccurence quantification analysis from the code guideline
+#For CRQA
+#Find delay: calculate mutual information with a difference lack
+  # tseriescaos::mutual()
+  #when fitted to a time series gives you the mutual information
+  # How strongly correlated are two points in time (more correlation between point coming right after each other).. can use different criterion: minimum (but loose lots of data), when it goes up again? The point of flexion where decrease is significantly smaller (less conservative but allows you to preserve more data)
+#optimize param always chooses the most conservative - you will often get an error using this
+#Embed: Use false nearest neighbours
+
+#0 = control
+#1 = schizo
+#same ID to reflect that people where similar
+
+#I actually added individual IDs - we should probably add age and other factors. ENOUGH TO WRITE THAT WE SHOULD DO SO
+#I did not trust their matching of participants
+
+library(tseriesChaos)
+library(crqa)
+
+
+par = list(lgM = 50, steps = seq(1, 6, 1), radiusspan = 100, radiussample = 40, normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2, tw = 0, whiteline = F, recpt = FALSE, fnnpercent = 10, typeami = "mindip")
+
+ans = try(optimizeParam(firstData$f0, firstData$f0, par))
+
+
+results = crqa(firstData, firstData, delay = delay, embed = emddim, radius = radius, normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2)
+
+#We cannot extract complex descriptors - to few data points
+
+```
+
+
+
+2. Second you will have to turn the code into a function and loop through all the files (or even better use apply/sapply/lapply)
+- Remember to extract the relevant information from the file names (Participant, Diagnosis, Trial, Study)
+
+```{r}
+
+#Extract list of files
+files = list.files(path = "C:/Users/hille/OneDrive/Cognitive Science at Aarhus University/2017 - Experimental Methods 3/assignments/Assignment-3/Pitch")
+
+#setWD
+setwd("C:/Users/hille/OneDrive/Cognitive Science at Aarhus University/2017 - Experimental Methods 3/assignments/Assignment-3/Pitch")
+
+participant = NULL
+diagnosis = NULL
+trial = NULL
+study = NULL
+delay = NULL
+radius = NULL
+embed = NULL
+
+
+
+
+n = 1
+
+
+
+
+#Extract optimal parameters
+for (file in files){
+  print(file)
+  
+  
+  #read the specific file
+  tempFile = read.table(file, header = T)
+  
+  #get participant number information
+  #would like to extract seperate participant, trial and diagnosis info
+  study[n] = substring(file, 6, 6)
+  diagnosis[n] = substring(file, 8, 8)
+  participant[n] = substring(sub("T.*", "", file),8)
+  trial[n] = sub(".T*", "", sub("\\_.*", "", sub("^[^T]*", "", file)))
+  
+  
+  #optimizeparam functions
+  par = list(lgM = 50, steps = seq(1, 6, 1), radiusspan = 100, radiussample = 40, normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2, tw = 0, whiteline = F, recpt = FALSE, fnnpercent = 10, typeami = "mindip")
+  ans = try(optimizeParam(tempFile$f0, tempFile$f0, par))
+  
+  print(ans)
+  
+  #if statement: If having problem with optimizeparam, it will append NA
+  if (length(ans) > 1){
+    radius[n] = ans[1]
+    embed[n] = ans[2]
+    delay[n] = ans[3]
+    }
+  
+  else {
+    radius[n] = NA
+    embed[n] = NA
+    delay[n] = NA
+    
+  }
+  
+  n = n+1
+  print(n)
+  
+}
+
+
+
+
+#Need to unlist it in order to make it a list!
+delay = unlist(delay)
+embed = unlist(embed)
+radius = unlist(radius)
+
+
+df = data.frame(participant, diagnosis, study, trial, embed, delay, radius)
+
+
+
+#Write to datafile to avoid looping through all of them again
+write.csv(df, file = "dataExtractSchizo.csv", row.names = F)
+
+
+```
+
+
+Make the loop for your CRQA
+
+
+```{r}
+#setWD for chunk
+setwd("C:/Users/hille/OneDrive/Cognitive Science at Aarhus University/2017 - Experimental Methods 3/assignments/Assignment-3/Pitch")
+
+data = read.csv("dataExtractSchizo.csv")
+
+#calculate median delay, radius and embed
+radiusOptimal = median(data$radius, na.rm = T)
+embedOptimal = median(data$embed, na.rm = T)
+delayOptimal = median(data$delay, na.rm = T)
+
+
+#crqaextract
+N = 1
+rqa_RR = NULL
+rqa_DET = NULL
+rqa_NRLINE = NULL
+rqa_maxL = NULL
+rqa_L = NULL
+rqa_ENTR = NULL
+rqa_rENTR = NULL
+rqa_LAM = NULL
+rqa_TT = NULL
+rqa_RP = NULL
+
+
+for (file in files){
+  print(file)
+  
+  #read the specific file
+  tempFile = read.table(file, header = T)
+  
+  #Make CRQA
+  results = try(crqa(tempFile$f0, tempFile$f0, delay = delayOptimal, embed = embedOptimal, radius = radiusOptimal, normalize = 0, rescale = 0, mindiagline = 2, minvertline = 2))
+  
+  if (length(results) > 1){
+    #Write to lists
+    rqa_RR[N] = results[1]
+    rqa_DET[N] = results[2]
+    rqa_NRLINE[N] = results[3]
+    rqa_maxL[N] = results[4]
+    rqa_L[N] = results[5]
+    rqa_ENTR[N] = results[6]
+    rqa_rENTR[N] = results[7]
+    rqa_LAM[N] = results[8]
+    rqa_TT[N] = results[9]
+    rqa_RP[N] = results[10]
+  }
+  else{
+    rqa_RR[N] = NA
+    rqa_DET[N] = NA
+    rqa_NRLINE[N] = NA
+    rqa_maxL[N] = NA
+    rqa_L[N] = NA
+    rqa_ENTR[N] = NA
+    rqa_rENTR[N] = NA
+    rqa_LAM[N] = NA
+    rqa_TT[N] = NA
+    rqa_RP[N] = NA
+  }
+  
+  
+  N = N+1
+  
+  }
+
+#Unlist variables
+rqa_RR = unlist(rqa_RR)
+rqa_DET = unlist(rqa_DET)
+rqa_NRLINE = unlist(rqa_NRLINE)
+rqa_maxL = unlist(rqa_maxL)
+rqa_L = unlist(rqa_L)
+rqa_ENTR = unlist(rqa_ENTR)
+rqa_LAM = unlist(rqa_LAM)
+rqa_TT = unlist(rqa_TT)
+
+
+#Add to our lovely dataframe
+df_new = data.frame(df, rqa_RR, rqa_DET, rqa_NRLINE, rqa_maxL, rqa_L, rqa_ENTR, rqa_LAM, rqa_TT)
+
+
+
+
+
+```
+
+
+Extract simple accoustic features because I did not do it earlier in the first loop
+
+```{r}
+#setWD for chunk
+setwd("C:/Users/hille/OneDrive/Cognitive Science at Aarhus University/2017 - Experimental Methods 3/assignments/Assignment-3/Pitch")
+
+mean = NULL
+median = NULL
+stdDev = NULL
+range = NULL
+IQR = NULL
+coefOfVar = NULL
+meanAbsDev = NULL
+
+N = 1
+
+for (file in files){
+  print(file)
+  
+  #read the specific file
+  tempFile = read.table(file, header = T)
+  
+  #Mean
+  mean[N] = mean(tempFile$f0)
+  
+  #median
+  median [N] = median(tempFile$f0)
+  
+  #stdDev
+  stdDev[N] = sd(tempFile$f0)
+  
+  #range
+  range[N] = max(range(tempFile$f0))-min(range(tempFile$f0))
+  
+  #Interquartile range
+  IQR[N] = IQR(tempFile$f0)
+  
+  #CV
+  coefOfVar[N] = stdDev[N]/mean[N]*100
+  
+  meanAbsDev[N] = mad(tempFile$f0)
+  
+  N = N+1
+  
+}
+
+
+df = data.frame(df_new, mean, median, stdDev, range, IQR, coefOfVar, meanAbsDev)
+
+#write to CSV
+write.csv(df, file = "dataExtractSchizo.csv", row.names = F)
+
+#use regular expressions to remove the s from participant
+
+
+
+
+```
+
+
+
+3. Make one model per acoustic feature and test whether you can observe significant difference due to Diagnosis. Tip: Which other fixed factors should you control for (that is, include in the model)? Which random ones?
+
+
+```{r}
+#Read data, because face it - we won't do the loop again
+
+data = read.csv("dataExtractSchizo.csv", header = T)
+
+
+library(lmerTest)
+
+#Factors we want to run through
+
+sumRR = summary(lmerTest::lmer(rqa_RR ~ diagnosis + (1+trial|study) + (1|participant), data))
+sumDET = summary(lmerTest::lmer(rqa_DET ~ diagnosis + (1+trial|study) + (1|participant), data))
+
+
+sumNRLINE = summary(lmerTest::lmer(rqa_NRLINE ~ diagnosis + (1+trial|study) + (1|participant), data))
+
+
+summaxL = summary(lmerTest::lmer(rqa_maxL ~ diagnosis + (1+trial|study) + (1|participant), data))
+sumL = summary(lmerTest::lmer(rqa_L ~ diagnosis + (1+trial|study) + (1|participant), data))
+sumENTR = summary(lmerTest::lmer(rqa_ENTR ~ diagnosis + (1+trial|study) + (1|participant), data))
+sumLAM = summary(lmerTest::lmer(rqa_LAM ~ diagnosis + (1+trial|study) + (1|participant), data))
+sumTT = summary(lmerTest::lmer(rqa_TT ~ diagnosis + (1+trial|study) + (1|participant), data))
+
+summean = summary(lmerTest::lmer(mean ~ diagnosis + (1+trial|study) + (1|participant), data))
+summedian = summary(lmerTest::lmer(median ~ diagnosis + (1+trial|study) + (1|participant), data))
+sumstdDev = summary(lmerTest::lmer(stdDev ~ diagnosis + (1+trial|study) + (1|participant), data))
+sumrange = summary(lmerTest::lmer(range ~ diagnosis + (1+trial|study) + (1|participant), data))
+sumIQR = summary(lmerTest::lmer(IQR ~ diagnosis + (1+trial|study) + (1|participant), data))
+sumcoefOfVar = summary(lmerTest::lmer(coefOfVar ~ diagnosis + (1+trial|study) + (1|participant), data))
+summeanAbsDev = summary(lmerTest::lmer(meanAbsDev ~ diagnosis + (1+trial|study) + (1|participant), data))
+
+
+```
+
+
+- Bonus points: cross-validate the model and report the betas and standard errors from all rounds to get an idea of how robust the estimates are. 
+3a. Is study a significant predictor in these models? What should you infer from this? Does study interact with diagnosis? What should you infer from this?
+
+4. Bonus Question: Compare effect size of diagnosis across the different measures. Which measure seems most sensitive?
+- Tip: to compare across measures you need to put all of them on the same scale, that is, you need to "standardize" them (z-score)
+
+5. Bonus question. In the Clinical Info file you have additional information about the participants. Which additional parameters (e.g. age, gender) should we control for? Report the effects.
+
+6. Write a paragraph reporting methods and results
+
+[Next assignment: can we use these measures to build a tool that diagnoses people from voice only?]
+
+## N.B. Remember to save the acoustic features of voice in a separate file, so to be able to load them next time
+
+
