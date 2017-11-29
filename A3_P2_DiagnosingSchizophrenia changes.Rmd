@@ -28,7 +28,7 @@ N.B. Now you have two levels of structure: subject and study. Should this impact
 
 ```{r}
 #setWD 
-setwd("C:/Users/hille/OneDrive/Cognitive Science at Aarhus University/2017 - Experimental Methods 3/assignments/Assignment-3")
+setwd("C:/Users/hille/OneDrive/Cognitive Science at Aarhus University/2017 - Experimental Methods 3/assignments/Assignment-3/Assignment-3")
 
 #Read data
 data = read.csv("dataExtractSchizo.csv", header = T)
@@ -48,7 +48,7 @@ data$diagnosis = as.factor(data$diagnosis)
 
 
 #make the logistic regression. Prediction from only range.
-library(lme4)
+library(lmerTest)
 
 #Which fixed effects should be included?
 #we inlcude study as the only random effect
@@ -190,7 +190,7 @@ for (fold in folds){
   testData$predictions = as.numeric(testData$predictions)
 
   #Calculate area under the curve
-  rocANStest = roc(response = trainData$diagnosis, predictor = trainData$predictions)
+  rocANStest = roc(response = testData$diagnosis, predictor = testData$predictions)
   
   testAUC[N] = rocANStest$auc
   
@@ -324,7 +324,7 @@ for (feature in accousticFeatures){
     testData$predictions = as.numeric(testData$predictions)
   
     #Calculate area under the curve
-    rocANStest = roc(response = trainData$diagnosis, predictor = trainData$predictions)
+    rocANStest = roc(response = testData$diagnosis, predictor = testData$predictions)
     
     testAUC[N] = rocANStest$auc
     
@@ -565,7 +565,7 @@ row.names(dfResultsMultiple) = c("accuracy", "sensitivity", "specificity", "PPV"
 
 ```
 As predictet R could not handle the many interactions.
-We find that (looking at AUC) model 6 performs the best.
+We find that (looking at AUC) model 5 performs the best.
 Model 5 predicted diagnosis from coefficient of variation, mean absolute deviation, IQR, standard deviation, RR and Range using study as a random effect.
 
 
@@ -576,7 +576,7 @@ The data was extracted from a time series analysis of pitch measured every 10 mi
 Hereafter a crossvalidation using the different performance measures was used to predict diagnosis. The results was evaluated by the following parameters: accuracy, sensitivity, specificity, PPV, NPV and AUC. Performance measures for both the test and training folds was saved and averaged.
 Using AUC as our evaluation measure the individual features was tested and the ones with an AUC >0.55 was choosen.
 These were then combined into different models, that were tested using the same method.
-The best model on the testing set was model 5 which predicted diagnosis from coefficient of variation, mean absolute deviation, IQR, standard deviation and RR using study as a random effect. It had an AUC of 0.6192416 for the training data and 0.6423584 for the test data.
+The best model on the testing set was model 5 which predicted diagnosis from coefficient of variation, mean absolute deviation, IQR, standard deviation and RR using study as a random effect. It had an AUC of 0.6192416 for the training data and 0.6423584 for the test data. (AUC changed on rerunning due to different folds - therefore numbers here deviate from those of the assignment)
 
 ```{r}
 #Should this be crossValidated?
@@ -592,7 +592,6 @@ RESULTS SECTION: can you diagnose schizophrenia based on voice? which features a
 
 On the test dataset we managed to predict diagnosis with 65.23584 % accuracy measured by AUC. This is better than zero, but so far not good predictions.
 We find that all the predictors included in the model is significant at p < 0.05.
-#should we write estimates here or doesn't it matter as they are in std.dev?
 
 
 
