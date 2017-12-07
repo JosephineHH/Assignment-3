@@ -369,6 +369,37 @@ summeanAbsDev = summary(lmerTest::lmer(meanAbsDev ~ diagnosis + (1+trial|study) 
 
 - Bonus points: cross-validate the model and report the betas and standard errors from all rounds to get an idea of how robust the estimates are. 
 3a. Is study a significant predictor in these models? What should you infer from this? Does study interact with diagnosis? What should you infer from this?
+```{r}
+#Read data in again - R was closed again
+data = read.csv("dataExtractSchizo.csv")
+
+library(lmerTest)
+
+#Factors we want to run through
+
+studyRR = summary(lmerTest::lmer(rqa_RR ~ study + (1+trial|study) + (1|participant), data))
+studyDET = summary(lmerTest::lmer(rqa_DET ~ study + (1+trial|study) + (1|participant), data))
+
+
+studyNRLINE = summary(lmerTest::lmer(rqa_NRLINE ~ study + (1+trial|study) + (1|participant), data))
+
+
+studymaxL = summary(lmerTest::lmer(rqa_maxL ~ study + (1+trial|study) + (1|participant), data))
+studyL = summary(lmerTest::lmer(rqa_L ~ study + (1+trial|study) + (1|participant), data))
+studyENTR = summary(lmerTest::lmer(rqa_ENTR ~ study + (1+trial|study) + (1|participant), data))
+studyLAM = summary(lmerTest::lmer(rqa_LAM ~ study + (1+trial|study) + (1|participant), data))
+studyTT = summary(lmerTest::lmer(rqa_TT ~ study + (1+trial|study) + (1|participant), data))
+
+studymean = summary(lmerTest::lmer(mean ~ study + (1+trial|study) + (1|participant), data))
+studymedian = summary(lmerTest::lmer(median ~ study + (1+trial|study) + (1|participant), data))
+studystdDev = summary(lmerTest::lmer(stdDev ~ study + (1+trial|study) + (1|participant), data))
+studyrange = summary(lmerTest::lmer(range ~ study + (1+trial|study) + (1|participant), data))
+studyIQR = summary(lmerTest::lmer(IQR ~ study + (1+trial|study) + (1|participant), data))
+studycoefOfVar = summary(lmerTest::lmer(coefOfVar ~ study + (1+trial|study) + (1|participant), data))
+studymeanAbsDev = summary(lmerTest::lmer(meanAbsDev ~ study + (1+trial|study) + (1|participant), data))
+
+```
+
 
 4. Bonus Question: Compare effect size of diagnosis across the different measures. Which measure seems most sensitive?
 - Tip: to compare across measures you need to put all of them on the same scale, that is, you need to "standardize" them (z-score)
